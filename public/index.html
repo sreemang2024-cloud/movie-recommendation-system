@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ReelMatch — Find your next watch</title>
+<meta name="description" content="Search movies, actors and directors, or browse by mood. Real recommendations powered by TMDb." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="siteNav">
+  <div class="nav__inner">
+    <a href="#top" class="nav__brand" aria-label="ReelMatch home">
+      <span class="nav__brand-mark">RM</span>
+      <span class="nav__brand-word">ReelMatch</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#trending">Trending</a>
+      <a href="#moods">Moods</a>
+      <a href="#top-rated">Top Rated</a>
+      <a href="#watchlist">Watchlist</a>
+    </nav>
+    <div class="nav__actions">
+      <button type="button" class="nav__icon-btn" id="navSearchToggle" aria-label="Open search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <a href="#watchlist" class="nav__watchlist-btn">
+        Watchlist
+        <span class="nav__badge" id="navWatchlistCount">0</span>
+      </a>
+    </div>
+    <button type="button" class="nav__menu-toggle" id="mobileMenuToggle" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <nav class="nav__mobile" id="mobileMenu" aria-label="Mobile">
+    <a href="#trending">Trending</a>
+    <a href="#moods">Moods</a>
+    <a href="#top-rated">Top Rated</a>
+    <a href="#watchlist">Watchlist</a>
+  </nav>
+</header>
+
+<!-- API key setup banner -->
+<div class="setup-banner" id="setupBanner" hidden>
+  <div class="setup-banner__inner">
+    <p><strong>No TMDb API key configured yet.</strong> Add your key to <code>server/.env</code> as <code>TMDB_API_KEY</code>, then restart the server to load real data.</p>
+    <button type="button" id="dismissBanner" aria-label="Dismiss">&times;</button>
+  </div>
+</div>
+
+<main id="top">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <p class="eyebrow">Movie recommendation engine</p>
+        <h1 class="hero__title">Tell us a title,<br>a name, or a <em>mood.</em></h1>
+        <p class="hero__sub">One search bar finds matching films, everything an actor or director has made, or a full slate picked for how you want to feel tonight.</p>
+
+        <form class="search" id="searchForm" role="search" autocomplete="off">
+          <svg class="search__icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="searchInput" placeholder="Try “Denis Villeneuve”, “Oppenheimer”, or “Dune”" aria-label="Search movies, actors or directors" />
+          <button type="button" class="search__clear" id="searchClear" aria-label="Clear search" hidden>&times;</button>
+          <button type="submit" class="search__submit">Search</button>
+
+          <div class="search__dropdown" id="searchDropdown" hidden></div>
+        </form>
+
+        <div class="hero__chips">
+          <span class="hero__chips-label">Quick moods:</span>
+          <div class="hero__chip-row" id="quickMoods"></div>
+        </div>
+
+        <button type="button" class="surprise-btn" id="surpriseBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9H21.5L15.75 13.5L18 21L12 16.5L6 21L8.25 13.5L2.5 9H9.5L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          Surprise me
+        </button>
+      </div>
+
+      <div class="hero__art" aria-hidden="true">
+        <div class="ticket-stack">
+          <div class="ticket-stack__card ticket-stack__card--1">
+            <span class="ticket-stack__label">ADMIT ONE</span>
+            <span class="ticket-stack__title">Feature Presentation</span>
+            <span class="ticket-stack__meta">SCREEN 04 · 21:15</span>
+          </div>
+          <div class="ticket-stack__card ticket-stack__card--2">
+            <span class="ticket-stack__label">ADMIT ONE</span>
+            <span class="ticket-stack__title">Now Recommending</span>
+            <span class="ticket-stack__meta">FOR YOU · TONIGHT</span>
+          </div>
+          <div class="ticket-stack__reel" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RESULTS (dynamic) ================= -->
+  <section class="results" id="resultsSection" hidden>
+    <div class="section-inner">
+      <div class="results__header">
+        <div>
+          <p class="eyebrow" id="resultsEyebrow">Results</p>
+          <h2 id="resultsTitle">—</h2>
+        </div>
+        <div class="results__controls">
+          <label for="resultsSort" class="sr-only">Sort results</label>
+          <select id="resultsSort" class="select">
+            <option value="popularity.desc">Most popular</option>
+            <option value="vote_average.desc">Highest rated</option>
+            <option value="primary_release_date.desc">Newest first</option>
+          </select>
+          <button type="button" class="ghost-btn" id="closeResults">Close ×</button>
+        </div>
+      </div>
+
+      <div class="people-row" id="peopleRow" hidden></div>
+
+      <div class="card-grid" id="resultsGrid"></div>
+
+      <div class="results__footer">
+        <button type="button" class="load-more" id="loadMoreResults" hidden>Load more</button>
+        <p class="empty-state" id="resultsEmpty" hidden>No matches yet. Try a different title, name, or mood.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TRENDING ================= -->
+  <section class="trending" id="trending">
+    <div class="section-inner">
+      <p class="eyebrow">This week</p>
+      <h2>Trending now</h2>
+      <p class="section-sub">What everyone else is watching right now, refreshed weekly.</p>
+    </div>
+    <div class="filmstrip">
+      <div class="filmstrip__track" id="trendingTrack">
+        <p class="loading-row">Loading trending titles…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RECENTLY VIEWED ================= -->
+  <section class="recent" id="recentSection" hidden>
+    <div class="section-inner">
+      <p class="eyebrow">Continue exploring</p>
+      <h2>Recently viewed</h2>
+      <div class="card-grid card-grid--compact" id="recentGrid"></div>
+    </div>
+  </section>
+
+  <!-- ================= MOODS ================= -->
+  <section class="moods" id="moods">
+    <div class="section-inner">
+      <p class="eyebrow">Search by feeling</p>
+      <h2>What's the mood tonight?</h2>
+      <p class="section-sub">Every ticket below is tuned to a genre blend. Pick one and we'll pull a full slate.</p>
+      <div class="mood-grid" id="moodGrid">
+        <p class="loading-row">Loading moods…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TOP RATED ================= -->
+  <section class="top-rated" id="top-rated">
+    <div class="section-inner">
+      <p class="eyebrow">Certified favorites</p>
+      <h2>Top rated of all time</h2>
+      <p class="section-sub">Consistently high scores across thousands of votes.</p>
+      <div class="card-grid" id="topRatedGrid">
+        <p class="loading-row">Loading top rated titles…</p>
+      </div>
+      <div class="results__footer">
+        <button type="button" class="load-more" id="loadMoreTopRated" hidden>Load more</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WATCHLIST ================= -->
+  <section class="watchlist" id="watchlist">
+    <div class="section-inner">
+      <div class="results__header">
+        <div>
+          <p class="eyebrow">Saved for later</p>
+          <h2>Your watchlist</h2>
+        </div>
+        <button type="button" class="ghost-btn" id="clearWatchlist">Clear all</button>
+      </div>
+      <div class="card-grid" id="watchlistGrid"></div>
+      <p class="empty-state" id="watchlistEmpty">Nothing saved yet. Add a film from any card with the + button.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__brand">
+      <span class="nav__brand-mark">RM</span>
+      <span class="nav__brand-word">ReelMatch</span>
+      <p>A recommendation engine for people who still read the credits.</p>
+    </div>
+    <div class="footer__col">
+      <h3>Browse</h3>
+      <a href="#trending">Trending</a>
+      <a href="#moods">Moods</a>
+      <a href="#top-rated">Top Rated</a>
+      <a href="#watchlist">Watchlist</a>
+    </div>
+    <div class="footer__col">
+      <h3>Data</h3>
+      <a href="https://www.themoviedb.org" target="_blank" rel="noopener">The Movie Database</a>
+      <a href="https://www.themoviedb.org/documentation/api" target="_blank" rel="noopener">TMDb API docs</a>
+    </div>
+    <div class="footer__col">
+      <h3>Session</h3>
+      <button type="button" id="footerClearAll" class="link-btn">Reset local data</button>
+      <button type="button" id="backToTop" class="link-btn">Back to top ↑</button>
+    </div>
+  </div>
+  <div class="footer__legal">
+    <p>This product uses the TMDb API but is not endorsed or certified by TMDb.</p>
+    <p>© <span id="year"></span> ReelMatch. Built for a recommendation systems project.</p>
+  </div>
+</footer>
+
+<!-- ================= MODAL ================= -->
+<div class="modal-overlay" id="modalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="modal">
+    <button type="button" class="modal__close" id="modalClose" aria-label="Close dialog">&times;</button>
+    <div class="modal__body" id="modalBody">
+      <p class="loading-row">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
